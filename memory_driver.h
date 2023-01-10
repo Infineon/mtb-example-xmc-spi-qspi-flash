@@ -1,15 +1,19 @@
 /******************************************************************************
-* File Name:   ring_buffer.h
+* File Name:   N25Q03.h
 *
-* Description: This is the source code for the XMC MCU: Flash Protection
-*              Example for ModusToolbox. This file is the public interface
-*              of ring_buffer.c source file.
+* Description: This is the source code for the XMC MCU: SPI QSPI Flash
+*              Example for ModusToolbox. This file includes the function
+*              definitions for interfacing the on-board N25Q03 memory chip
+*              in the XMC4700 Relax kit V1 and XMC4800 Relax EtherCAT kit V1,
+*              the on-board S25FL032P0XMFI01 memory chip in the XMC4500 Relax
+*              kit V1 or the on-board SST26VF032BT-104I/SM memory chip
+*              in the XMC4400 Platform2Go kit.
 *
 * Related Document: See README.md
 *
 ******************************************************************************
 *
-* Copyright (c) 2015-2021, Infineon Technologies AG
+* Copyright (c) 2015-2022, Infineon Technologies AG
 * All rights reserved.
 *
 * Boost Software License - Version 1.0 - August 17th, 2003
@@ -38,51 +42,19 @@
 *
 *****************************************************************************/
 
-#ifndef RING_BUFFER_H
-#define RING_BUFFER_H
-
 #include <stdint.h>
 #include <stdbool.h>
 
 /*******************************************************************************
-* Macros
-*******************************************************************************/
-#define RING_BUFFER_DEF(x, sz)\
-    uint8_t x##_data[sz];\
-    ring_buffer_t x = {\
-      .buffer = x##_data,\
-      .head = 0,\
-      .tail = 0,\
-      .len = sz\
-    }
-
-/* Ringbuffer API return values */
-#define RING_BUFFER_FULL        true
-#define RING_BUFFER_NOT_FULL    false
-#define RING_BUFFER_EMPTY       true
-#define RING_BUFFER_NOT_EMPTY   false
-#define RING_BUFFER_OK           0
-#define RING_BUFFER_FULL_ERROR  -1
-#define RING_BUFFER_EMPTY_ERROR -2
-
-/*******************************************************************************
-* Typedefs
-*******************************************************************************/
-typedef struct ring_buffer
-{
-    uint8_t *buffer;
-    volatile uint32_t head;
-    volatile uint32_t tail;
-    const uint32_t len;
-} ring_buffer_t;
-
-/*******************************************************************************
-* Function prototypes
-*******************************************************************************/
-uint32_t ring_buffer_avail(ring_buffer_t *const rb);
-int32_t ring_buffer_put(ring_buffer_t *const rb, uint8_t c);
-int32_t ring_buffer_get(ring_buffer_t *const rb, uint8_t *const c);
-
-#endif
+ * Function Prototypes
+ *******************************************************************************/
+uint16_t memory_status_read(void);
+void memory_sector_erase(uint32_t address);
+void memory_write_enable(void);
+void memory_quad_read_page(uint32_t address, uint8_t *p_spi_receive_data);
+void memory_quad_write_page(uint32_t address, uint8_t *p_spi_send_data);
+void memory_read_page(uint32_t address, uint8_t *p_spi_receive_data);
+void memory_program_page( uint32_t address, uint8_t *p_spi_send_data);
+void memory_write_protection(void);
 
 /* [] END OF FILE */

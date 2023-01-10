@@ -4,14 +4,13 @@
  * Description: This is the source code for the XMC MCU: SPI QSPI Flash
  *              example for ModusToolbox. This file contains all the
  *              function declarations for the SPI wrapper required to
- *              interface with the on-board external memory chip on
- *              XMC4700 Relax Kit V1.
+ *              interface with the on-board external memory chip.
  *
  * Related Document: See README.md
  *
  ******************************************************************************
  *
- * Copyright (c) 2015-2021, Infineon Technologies AG
+ * Copyright (c) 2015-2022, Infineon Technologies AG
  * All rights reserved.
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
@@ -129,11 +128,11 @@ typedef struct SPI_MASTER_GPIO
 /* Pin configuration for the selected pins */
 typedef struct SPI_MASTER_GPIO_CONFIG
 {
-    XMC_GPIO_CONFIG_t port_config;              /* Properties of the port pin */
-    XMC_GPIO_HWCTRL_t hw_control;               /* hardware control
+    const XMC_GPIO_CONFIG_t* port_config;              /* Properties of the port pin */
+    XMC_GPIO_HWCTRL_t hw_control;                /* hardware control
                                                  * characteristics of the pin
                                                  */
-    XMC_SPI_CH_SLAVE_SELECT_t slave_select_ch;  /* Indicates the mapped slave
+    XMC_SPI_CH_SLAVE_SELECT_t slave_select_ch;   /* Indicates the mapped slave
                                                  * select line
                                                  */
 } SPI_MASTER_GPIO_CONFIG_t;
@@ -143,7 +142,7 @@ typedef struct SPI_MASTER_GPIO_CONFIG
  */
 typedef struct SPI_MASTER_CONFIG
 {
-    XMC_SPI_CH_CONFIG_t * const channel_config;         /**< Reference to SPI configuration structure */
+    XMC_SPI_CH_CONFIG_t* const channel_config;         /**< Reference to SPI configuration structure */
     SPI_MASTER_lInit_functionhandler fptr_spi_master_config;  /**< Function pointer to configure the MUX values*/
 
     /* Port configuration */
@@ -225,7 +224,6 @@ typedef struct SPI_MASTER
 extern "C" {
 #endif
 
-SPI_MASTER_STATUS_t SPI_MASTER_Init(SPI_MASTER_t* const handle);
 SPI_MASTER_STATUS_t SPI_MASTER_SetMode(SPI_MASTER_t* const handle, const XMC_SPI_CH_MODE_t mode);
 SPI_MASTER_STATUS_t SPI_MASTER_SetBaudRate(SPI_MASTER_t* const handle, const uint32_t baud_rate);
 SPI_MASTER_STATUS_t SPI_MASTER_Transmit(const SPI_MASTER_t *const handle, uint8_t* dataptr, uint32_t count);

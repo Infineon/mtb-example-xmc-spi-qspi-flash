@@ -4,13 +4,13 @@
  * Description: This is the source code for the XMC MCU: SPI QSPI Flash
  *              example for ModusToolbox. This file contains all the
  *              defines required to interface with the on-board
- *              external memory chip on XMC4700 Relax Kit V1.
+ *              external memory chip.
  *
  * Related Document: See README.md
  *
  ******************************************************************************
  *
- * Copyright (c) 2015-2021, Infineon Technologies AG
+ * Copyright (c) 2015-2022, Infineon Technologies AG
  * All rights reserved.
  *
  * Boost Software License - Version 1.0 - August 17th, 2003

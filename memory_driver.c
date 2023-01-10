@@ -1,16 +1,19 @@
 /******************************************************************************
- * File Name:   N25Q03.c
+ * File Name:   memory_driver.c
  *
  * Description: This is the source code for the XMC MCU: SPI QSPI Flash
  *              Example for ModusToolbox. This file includes the function
- *              definitions for interfacing the on-board N25Q03 memory
- *               chip in the XMC4700 Relax kit V1.
+ *              definitions for interfacing the on-board N25Q03 memory chip
+ *              in the XMC4700 Relax kit V1 and XMC4800 Relax EtherCAT kit V1,
+ *              the on-board S25FL032P0XMFI01 memory chip in the XMC4500 Relax
+ *              kit V1 or the on-board SST26VF032BT-104I/SM memory chip
+ *              in the XMC4400 Platform2Go kit.
  *
  * Related Document: See README.md
  *
  ******************************************************************************
  *
- * Copyright (c) 2015-2021, Infineon Technologies AG
+ * Copyright (c) 2015-2022, Infineon Technologies AG
  * All rights reserved.
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
@@ -39,31 +42,58 @@
  *
  *****************************************************************************/
 
-#include "N25Q03.h"
+#include "memory_driver.h"
+
 #include "spi_master.h"
-#include "xmc_spi.h"
+#include "cycfg_peripherals.h"
 
-/* N25Q03 flash chip command definitions */
-#define N25Q03_CM_READ          0x03
-#define N25Q03_CM_READ_FAST     0x0B
-#define N25Q03_CM_QUAL_READ     0x3B
-#define N25Q03_CM_QUAD_READ     0x6B
-#define N25Q03_CM_ID_READ       0x9F
+/* N25Q03 / S25FL032P / SST26VF032BT-104I-SM flash chip command definitions */
 
-#define N25Q03_CM_WRITE_EN      0x06
-#define N25Q03_CM_WRITE_DIS     0x04
+#define MEMORY_CM_READ          0x03
+#define MEMORY_CM_READ_FAST     0x0B
+#define MEMORY_CM_QUAL_READ     0x3B
+#define MEMORY_CM_QUAD_READ     0x6B
+#define MEMORY_CM_ID_READ       0x9F
 
-#define N25Q03_CM_ERASE_P4E     0x20 // 4KB sector
-#define N25Q03_CM_ERASE_P8E     0x40 // 8KB sector
-#define N25Q03_CM_ERASE_SE      0xD8 // 64KB sector
+#define MEMORY_CM_WRITE_EN      0x06
+#define MEMORY_CM_WRITE_DIS     0x04
 
-#define N25Q03_CM_PROG_PAGE     0x02 // page programming
-#define N25Q03_CM_PROG_QPAGE    0x32 // quad page programming
+/* Global Block Protection Unlock for KIT_XMC_PLT2GO_XMC4400 */
+#define MEMORY_CM_WRITE_PROT_DIS 0x98
 
-#define N25Q03_CM_REG_WRITE     0x01 // write status and configure register
-#define N25Q03_CM_REG_READ_ST   0x05 // read status register
-#define N25Q03_CM_REG_READ_CFG  0xB5 // read configure register
-#define N25Q03_CM_REG_RESET     0x30 // reset the erase and program fall flag
+/* 4KB sector */
+#define MEMORY_CM_ERASE_P4E     0x20
+
+/* 8KB sector */
+#if (UC_SERIES == XMC44)
+#define MEMORY_CM_ERASE_P8E     0xD8
+#else
+#define MEMORY_CM_ERASE_P8E     0x40
+#endif
+
+/* 64KB sector */
+#define MEMORY_CM_ERASE_SE      0xD8
+
+/* programming commands */
+#define MEMORY_CM_PROG_PAGE     0x02
+#define MEMORY_CM_PROG_QPAGE    0x32
+
+/* write status and configure register */
+#define MEMORY_CM_REG_WRITE     0x01
+
+/* read status register */
+#define MEMORY_CM_REG_READ_ST   0x05
+
+/* read configure register */
+#if (UC_SERIES == XMC44) || (UC_SERIES == XMC45)
+#define MEMORY_CM_REG_READ_CFG  0x35
+#endif
+#if (UC_SERIES == XMC47) || (UC_SERIES == XMC48)
+#define MEMORY_CM_REG_READ_CFG  0xB5
+#endif
+
+/* reset the erase and program fall flag */
+#define MEMORY_CM_REG_RESET     0x30
 
 #define SINGLE_WORD             1
 #define SECTOR_24_ADDR_MSK      0x00FF0000
@@ -81,11 +111,11 @@
 #define BIT64_FRAME             64
 
 /*******************************************************************************
- * Function Name: N25Q03_StatusRead
+ * Function Name: memory_status_read
  ********************************************************************************
  * Summary:
- *  This function sends read status register command to SPI flash chip
- *  and returns Status register value
+ * This function sends read status register command to SPI flash chip
+ * and returns Status register value
  *
  * Parameters:
  *  none
@@ -94,7 +124,7 @@
  *  uint16_t - SPI Flash status register value
  *
  *******************************************************************************/
-uint16_t N25Q03_StatusRead(void)
+uint16_t memory_status_read(void)
 {
     uint8_t tmp;
     uint8_t data = 0;
@@ -105,7 +135,7 @@ uint16_t N25Q03_StatusRead(void)
     SPI_MASTER_SetMode(&SPI_MASTER_0, XMC_SPI_CH_MODE_STANDARD);
 
     /* Set the number of bits in a frame */
-    XMC_USIC_CH_SetFrameLength(XMC_SPI2_CH1, BIT16_FRAME);
+    XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT16_FRAME);
 
     /* Enable slave select */
     SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0,
@@ -116,7 +146,7 @@ uint16_t N25Q03_StatusRead(void)
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION);
 
     /* Load the command */
-    data = N25Q03_CM_REG_READ_ST;
+    data = MEMORY_CM_REG_READ_ST;
 
     /* Send the read status register command to SPI flash chip */
     SPI_MASTER_Transmit(&SPI_MASTER_0, &data, SINGLE_WORD);
@@ -148,10 +178,10 @@ uint16_t N25Q03_StatusRead(void)
 }
 
 /*******************************************************************************
- * Function Name: N25Q03_SectorErase
+ * Function Name: memory_sector_erase
  ********************************************************************************
  * Summary:
- *  This function sends sector erase command to SPI flash chip
+ * This function sends sector erase command to SPI flash chip
  *
  * Parameters:
  *  uint32_t address - sector address to be erased
@@ -160,7 +190,7 @@ uint16_t N25Q03_StatusRead(void)
  *  void
  *
  *******************************************************************************/
-void N25Q03_SectorErase(uint32_t address)
+void memory_sector_erase(uint32_t address)
 {
     uint8_t data;
     uint32_t status1 = 0;
@@ -170,7 +200,7 @@ void N25Q03_SectorErase(uint32_t address)
     SPI_MASTER_SetMode(&SPI_MASTER_0, XMC_SPI_CH_MODE_STANDARD);
 
     /* Set the number of bits in a frame */
-    XMC_USIC_CH_SetFrameLength(XMC_SPI2_CH1, BIT32_FRAME);
+    XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT32_FRAME);
 
     /* Enable slave select */
     SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
@@ -180,7 +210,7 @@ void N25Q03_SectorErase(uint32_t address)
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION);
 
     /* Load the command */
-    data = N25Q03_CM_ERASE_SE;
+    data = MEMORY_CM_ERASE_SE;
 
     /* Send the command to SPI flash chip */
     SPI_MASTER_Transmit(&SPI_MASTER_0, &data, SINGLE_WORD);
@@ -254,10 +284,10 @@ void N25Q03_SectorErase(uint32_t address)
 }
 
 /*******************************************************************************
- * Function Name: N25Q03_WriteEnable
+ * Function Name: memory_write_enable
  ********************************************************************************
  * Summary:
- *  This function sends the write enable command to SPI flash chip
+ * This function sends the write enable command to SPI flash chip
  *
  * Parameters:
  *  void
@@ -266,7 +296,7 @@ void N25Q03_SectorErase(uint32_t address)
  *  void
  *
  *******************************************************************************/
-void N25Q03_WriteEnable(void)
+void memory_write_enable(void)
 {
     uint8_t data = 0;
     uint32_t status1 = 0;
@@ -276,7 +306,7 @@ void N25Q03_WriteEnable(void)
     SPI_MASTER_SetMode(&SPI_MASTER_0, XMC_SPI_CH_MODE_STANDARD);
 
     /* Set the number of bits in a frame */
-    XMC_USIC_CH_SetFrameLength(XMC_SPI2_CH1, BIT8_FRAME);
+    XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT8_FRAME);
 
     /* Enable slave select */
     SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
@@ -286,7 +316,7 @@ void N25Q03_WriteEnable(void)
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION);
 
     /* Write Enable command */
-    data = N25Q03_CM_WRITE_EN;
+    data = MEMORY_CM_WRITE_EN;
 
     /* Send Write Enable command */
     SPI_MASTER_Transmit(&SPI_MASTER_0, &data, SINGLE_WORD);
@@ -306,21 +336,73 @@ void N25Q03_WriteEnable(void)
 }
 
 /*******************************************************************************
- * Function Name: N25Q03_QuadReadPage
+ * Function Name: memory_write_protection
  ********************************************************************************
  * Summary:
- *  This function reads 256 bytes of data from the given sector to the buffer
- *  provided
+ * This function sends the write protection command to SPI flash chip
  *
  * Parameters:
- *  - uint32_t address - Memory address to be read
- *  - uint8_t *pSPIReceiveData - pointer to receive buffer
+ *  void
  *
  * Return:
  *  void
  *
  *******************************************************************************/
-void N25Q03_QuadReadPage(uint32_t address, uint8_t *pSPIReceiveData)
+void memory_write_protection(void)
+{
+    uint8_t data = 0;
+    uint32_t status1 = 0;
+    uint32_t status2 = 0;
+
+    /* Change SPI Channel configuration */
+    SPI_MASTER_SetMode(&SPI_MASTER_0, XMC_SPI_CH_MODE_STANDARD);
+
+    /* Set the number of bits in a frame */
+    XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT8_FRAME);
+
+    /* Enable slave select */
+    SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
+
+    /* Clear the flags */
+    SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_ALTERNATIVE_RECEIVE_INDICATION);
+    SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION);
+
+    /* Write Enable command */
+    data = MEMORY_CM_WRITE_PROT_DIS;
+
+    /* Send Write Enable command */
+    SPI_MASTER_Transmit(&SPI_MASTER_0, &data, SINGLE_WORD);
+
+    /* Wait while SPI master is busy */
+    while(SPI_MASTER_0.runtime->tx_busy);
+
+    /* Wait till dummy data is received from flash chip */
+    do
+    {
+        status1 = SPI_MASTER_GetFlagStatus(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_ALTERNATIVE_RECEIVE_INDICATION);
+        status2 = SPI_MASTER_GetFlagStatus(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION);
+    } while(((status1 == 0) && (status2 == 0)));
+
+    /* Disable the Slave Select Line */
+    SPI_MASTER_DisableSlaveSelectSignal(&SPI_MASTER_0);
+}
+
+/*******************************************************************************
+ * Function Name: memory_quad_read_page
+ ********************************************************************************
+ * Summary:
+ * This function reads 256 bytes of data from the given sector to the buffer
+ * provided
+ *
+ * Parameters:
+ *  - uint32_t address - Memory address to be read
+ *  - uint8_t *p_spi_receive_data - pointer to receive buffer
+ *
+ * Return:
+ *  void
+ *
+ *******************************************************************************/
+void memory_quad_read_page(uint32_t address, uint8_t *p_spi_receive_data)
 {
     uint8_t data = 0;
     uint32_t status1 = 0;
@@ -330,7 +412,7 @@ void N25Q03_QuadReadPage(uint32_t address, uint8_t *pSPIReceiveData)
     SPI_MASTER_SetMode(&SPI_MASTER_0, XMC_SPI_CH_MODE_QUAD);
 
     /* Set the number of bits in a frame */
-    XMC_USIC_CH_SetFrameLength(XMC_SPI2_CH1, BIT64_FRAME);
+    XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT64_FRAME);
 
     /* Enable slave select */
     SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
@@ -340,10 +422,10 @@ void N25Q03_QuadReadPage(uint32_t address, uint8_t *pSPIReceiveData)
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION);
 
     /* Quad read command */
-    data = N25Q03_CM_QUAD_READ;
+    data = MEMORY_CM_QUAD_READ;
 
-    /*Send the command in half-duplex mode*/
-    SPI_MASTER_0.runtime->spi_master_mode = XMC_SPI_CH_MODE_STANDARD_HALFDUPLEX;
+    /*Send the command in quad mode*/
+    SPI_MASTER_0.runtime->spi_master_mode = XMC_SPI_CH_MODE_QUAD;
 
     /* Send Quad read command */
     SPI_MASTER_Transmit(&SPI_MASTER_0, &data, SINGLE_WORD);
@@ -431,7 +513,7 @@ void N25Q03_QuadReadPage(uint32_t address, uint8_t *pSPIReceiveData)
     SPI_MASTER_0.runtime->spi_master_mode = XMC_SPI_CH_MODE_QUAD;
 
     /* Send 255 Dummy data to receive data from SPI Flash */
-    SPI_MASTER_Receive(&SPI_MASTER_0, pSPIReceiveData, DATA_LENGTH);
+    SPI_MASTER_Receive(&SPI_MASTER_0, p_spi_receive_data, DATA_LENGTH);
 
     /* Wait while SPI master is busy */
     while(SPI_MASTER_0.runtime->rx_busy);
@@ -441,31 +523,31 @@ void N25Q03_QuadReadPage(uint32_t address, uint8_t *pSPIReceiveData)
 }
 
 /*******************************************************************************
- * Function Name: N25Q03_QuadWritePage
+ * Function Name: memory_quad_write_page
  ********************************************************************************
  * Summary:
- *  This function writes 256 bytes of data from given buffer to the
- *  sector starting from 0x00000000
+ * This function writes 256 bytes of data from given buffer to the
+ * sector starting from 0x00000000
  *
  * Parameters:
  *  - uint32_t address - Memory address to write to
- *  - uint8_t *pSPIReceiveData - pointer to transmit buffer
+ *  - uint8_t *p_spi_receive_data - pointer to transmit buffer
  *
  * Return:
  *  void
  *
  *******************************************************************************/
-void N25Q03_QuadWritePage(uint32_t address, uint8_t *pSPISendData)
+void memory_quad_write_page(uint32_t address, uint8_t *p_spi_send_data)
 {
     uint8_t data = 0;
-    uint32_t status1=0;
-    uint32_t status2=0;
+    uint32_t status1 = 0;
+    uint32_t status2 = 0;
 
     /* Configure SPI Channel */
     SPI_MASTER_SetMode(&SPI_MASTER_0, XMC_SPI_CH_MODE_QUAD);
 
     /* Set the number of bits in a frame */
-    XMC_USIC_CH_SetFrameLength(XMC_SPI2_CH1, BIT64_FRAME);
+    XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT64_FRAME);
 
     /* Clear the flags */
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_ALTERNATIVE_RECEIVE_INDICATION);
@@ -475,10 +557,12 @@ void N25Q03_QuadWritePage(uint32_t address, uint8_t *pSPISendData)
     SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
 
     /* Program Quad page command */
-    data = N25Q03_CM_PROG_QPAGE;
+    data = MEMORY_CM_PROG_QPAGE;
 
-    /* Send the command in half-duplex */
+    /* Send the command in quad mode */
     SPI_MASTER_0.runtime->spi_master_mode = XMC_SPI_CH_MODE_QUAD;
+
+    /* Send Quad write command */
     SPI_MASTER_Transmit(&SPI_MASTER_0, &data, SINGLE_WORD);
 
     /* Wait while SPI master is busy */
@@ -551,7 +635,7 @@ void N25Q03_QuadWritePage(uint32_t address, uint8_t *pSPISendData)
 
     /* Send 255 bytes of Data in Quad SPI mode */
     SPI_MASTER_0.runtime->spi_master_mode = XMC_SPI_CH_MODE_QUAD;
-    SPI_MASTER_Transmit(&SPI_MASTER_0, pSPISendData, DATA_LENGTH);
+    SPI_MASTER_Transmit(&SPI_MASTER_0, p_spi_send_data, DATA_LENGTH);
 
     /* Wait while SPI master is busy */
     while(SPI_MASTER_0.runtime->tx_busy);
@@ -568,21 +652,21 @@ void N25Q03_QuadWritePage(uint32_t address, uint8_t *pSPISendData)
 }
 
 /*******************************************************************************
- * Function Name: N25Q03_ReadPage
+ * Function Name: memory_read_page
  ********************************************************************************
  * Summary:
- *  This function sends read page command and reads out 256 bytes of data
- *  from sector specified to the given buffer
+ * This function sends read page command and reads out 256 bytes of data
+ * from sector specified to the given buffer
  *
  * Parameters:
  *  - uint32_t address - Memory address to read from
- *  - uint8_t *pSPIReceiveData - pointer to receive buffer
+ *  - uint8_t *p_spi_receive_data - pointer to receive buffer
  *
  * Return:
  *  void
  *
  *******************************************************************************/
-void N25Q03_ReadPage(uint32_t address, uint8_t *pSPIReceiveData)
+void memory_read_page(uint32_t address, uint8_t *p_spi_receive_data)
 {
     uint8_t data = 0;
     uint32_t status1;
@@ -592,7 +676,7 @@ void N25Q03_ReadPage(uint32_t address, uint8_t *pSPIReceiveData)
     SPI_MASTER_SetMode(&SPI_MASTER_0, XMC_SPI_CH_MODE_STANDARD);
 
     /* Set the number of bits in a frame */
-    XMC_USIC_CH_SetFrameLength(XMC_SPI2_CH1, BIT64_FRAME);
+    XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT64_FRAME);
 
     /* Enable the Slave Select Line */
     SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
@@ -602,7 +686,7 @@ void N25Q03_ReadPage(uint32_t address, uint8_t *pSPIReceiveData)
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION);
 
     /* read page command */
-    data = N25Q03_CM_READ;
+    data = MEMORY_CM_READ;
 
     /* Send read page command */
     SPI_MASTER_Transmit(&SPI_MASTER_0, &data, SINGLE_WORD);
@@ -673,7 +757,7 @@ void N25Q03_ReadPage(uint32_t address, uint8_t *pSPIReceiveData)
     } while(((status1 == 0) && (status2 == 0)));
 
     /* Receive the 256 bytes */
-    SPI_MASTER_Receive(&SPI_MASTER_0, pSPIReceiveData, DATA_LENGTH);
+    SPI_MASTER_Receive(&SPI_MASTER_0, p_spi_receive_data, DATA_LENGTH);
 
     /* Wait while SPI master is busy */
     while(SPI_MASTER_0.runtime->rx_busy);
@@ -683,21 +767,21 @@ void N25Q03_ReadPage(uint32_t address, uint8_t *pSPIReceiveData)
 }
 
 /*******************************************************************************
- * Function Name: N25Q03_ProgramPage
+ * Function Name: memory_program_page
  ********************************************************************************
  * Summary:
- *  This function sends read page command and reads out 256 bytes of data
- *  from sector specified to the given buffer
+ * This function sends read page command and reads out 256 bytes of data
+ * from sector specified to the given buffer
  *
  * Parameters:
  *  - uint32_t address - Memory address to program
- *  - uint8_t *pSPIReceiveData - pointer to transmit buffer
+ *  - uint8_t *p_spi_send_data - pointer to transmit buffer
  *
  * Return:
  *  void
  *
  *******************************************************************************/
-void N25Q03_ProgramPage( uint32_t address, uint8_t *pSPISendData)
+void memory_program_page( uint32_t address, uint8_t *p_spi_send_data)
 {
     uint8_t data;
     uint32_t status1;
@@ -707,7 +791,7 @@ void N25Q03_ProgramPage( uint32_t address, uint8_t *pSPISendData)
     SPI_MASTER_SetMode(&SPI_MASTER_0, XMC_SPI_CH_MODE_STANDARD);
 
     /* Set the number of bits in a frame */
-    XMC_USIC_CH_SetFrameLength(XMC_SPI2_CH1, BIT64_FRAME);
+    XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT64_FRAME);
 
     /* Enable the Slave Select Line */
     SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
@@ -717,7 +801,9 @@ void N25Q03_ProgramPage( uint32_t address, uint8_t *pSPISendData)
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION);
 
     /* Write program page data */
-    data = N25Q03_CM_PROG_PAGE;
+    data = MEMORY_CM_PROG_PAGE;
+
+    /* Send program page write command */
     SPI_MASTER_Transmit(&SPI_MASTER_0, &data, SINGLE_WORD);
 
     /* Wait while SPI master is busy */
@@ -786,7 +872,7 @@ void N25Q03_ProgramPage( uint32_t address, uint8_t *pSPISendData)
     } while(((status1 == 0) && (status2 == 0)));
 
     /* Send 256 bytes of data to be programmed */
-    SPI_MASTER_Transmit(&SPI_MASTER_0, pSPISendData, DATA_LENGTH);
+    SPI_MASTER_Transmit(&SPI_MASTER_0, p_spi_send_data, DATA_LENGTH);
 
     /* Wait while SPI master is busy */
     while(SPI_MASTER_0.runtime->tx_busy);

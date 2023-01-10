@@ -4,13 +4,13 @@
  * Description: This is the source code for the XMC MCU: SPI QSPI Flash
  *              example for ModusToolbox. This file contains all the
  *              function definitions required to interface with the
- *              on-board external memory chip on XMC4700 Relax Kit V1.
+ *              on-board external memory chip.
  *
  * Related Document: See README.md
  *
  ******************************************************************************
  *
- * Copyright (c) 2015-2021, Infineon Technologies AG
+ * Copyright (c) 2015-2022, Infineon Technologies AG
  * All rights reserved.
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
@@ -43,7 +43,6 @@
 * Include header files
 *******************************************************************************/
 #include "spi_master.h"
-
 
 /*******************************************************************************
 * Macros
@@ -89,34 +88,6 @@ static void SPI_MASTER_lPortModeSet(const SPI_MASTER_t* handle);
 static void SPI_MASTER_lPortModeReset(const SPI_MASTER_t* handle);
 /* Returns whether mode change is valid or not */
 static SPI_MASTER_STATUS_t SPI_MASTER_lValidateModeChange(const SPI_MASTER_t * handle, XMC_SPI_CH_MODE_t mode);
-
-/*******************************************************************************
-* Function Name: SPI_MASTER_Init
-********************************************************************************
-* Summary:
-*  This function initializes the SPI channel with the provided configuration
-*
-* Parameters:
-*  SPI_MASTER_t* const handle - Pointer to SPI Master configuration
-*  structure
-*
-* Return:
-*  SPI_MASTER_STATUS_t - Status of SPI_MASTER driver initialization
-*           - SPI_MASTER_STATUS_SUCCESS - on successful initialization
-*           - SPI_MASTER_STATUS_FAILURE - if initialization fails
-*
-*******************************************************************************/
-SPI_MASTER_STATUS_t SPI_MASTER_Init(SPI_MASTER_t* const handle)
-{
-    SPI_MASTER_STATUS_t status;
-
-    XMC_ASSERT("SPI_MASTER_Init:handle NULL" , (handle != NULL));
-
-    /* Configure the port registers and data input registers of SPI channel */
-    status = handle->config->fptr_spi_master_config();
-
-    return status;
-}
 
 /*******************************************************************************
 * Function Name: SPI_MASTER_SetMode
@@ -251,7 +222,7 @@ SPI_MASTER_STATUS_t SPI_MASTER_SetBaudRate(SPI_MASTER_t* const handle, const uin
 SPI_MASTER_STATUS_t SPI_MASTER_Transmit(const SPI_MASTER_t *const handle, uint8_t* dataptr, uint32_t count)
 {
     SPI_MASTER_STATUS_t status;
-    
+
     status = SPI_MASTER_STATUS_FAILURE;
 
     if (handle->config->transmit_mode == SPI_MASTER_TRANSFER_MODE_INTERRUPT)
@@ -334,7 +305,7 @@ SPI_MASTER_STATUS_t SPI_MASTER_StartTransmitIRQ(const SPI_MASTER_t *const handle
         if ((dataptr != NULL) && (count > 0U))
         {
             status = SPI_MASTER_STATUS_BUSY;
-            
+
             /*Check data pointer is valid or not*/
             if (false == runtime_handle->tx_busy)
             {
@@ -346,7 +317,7 @@ SPI_MASTER_STATUS_t SPI_MASTER_StartTransmitIRQ(const SPI_MASTER_t *const handle
                 /* Obtain the address of data, size of data */
                 runtime_handle->tx_data = dataptr;
                 runtime_handle->tx_data_count = (uint32_t)count << (bytes_per_word - 1U);
-                
+
                 /* Initialize to first index and set the busy flag */
                 runtime_handle->tx_data_index = 0U;
                 runtime_handle->tx_busy = true;
@@ -362,7 +333,7 @@ SPI_MASTER_STATUS_t SPI_MASTER_StartTransmitIRQ(const SPI_MASTER_t *const handle
                 {
                     XMC_USIC_CH_EnableEvent(handle->channel,(uint32_t)XMC_USIC_CH_EVENT_TRANSMIT_BUFFER);
                 }
-                
+
                 XMC_SPI_CH_SetTransmitMode(handle->channel, runtime_handle->spi_master_mode);
                 status = SPI_MASTER_STATUS_SUCCESS;
 
@@ -412,7 +383,7 @@ SPI_MASTER_STATUS_t SPI_MASTER_StartReceiveIRQ(const SPI_MASTER_t *const handle,
     if (handle->config->receive_mode == SPI_MASTER_TRANSFER_MODE_INTERRUPT)
     {
         status = SPI_MASTER_STATUS_BUSY;
-        
+
         /* Check whether SPI channel is free or not */
         if ((dataptr != NULL) && (count > 0U))
         {
@@ -1069,7 +1040,7 @@ static void SPI_MASTER_lPortConfig(const SPI_MASTER_t* handle)
             /* Configure the pin as input */
             XMC_GPIO_SetMode(handle->config->mosi_1_pin->port,
                             handle->config->mosi_1_pin->pin,
-                            handle->config->mosi_1_pin_config->port_config.mode);
+                            handle->config->mosi_1_pin_config->port_config->mode);
 
             /* Configure the Hardware control mode selected for the pin */
             XMC_GPIO_SetHardwareControl(handle->config->mosi_0_pin->port,
@@ -1109,12 +1080,12 @@ static void SPI_MASTER_lPortModeSet(const SPI_MASTER_t* handle)
     {
         XMC_GPIO_SetMode(handle->config->slave_select_pin[ss_line]->port,
                         handle->config->slave_select_pin[ss_line]->pin,
-                        handle->config->slave_select_pin_config[ss_line]->port_config.mode);
+                        handle->config->slave_select_pin_config[ss_line]->port_config->mode);
     }
 
     XMC_GPIO_SetMode(handle->config->sclk_out_pin->port,
                     handle->config->sclk_out_pin->pin,
-                    handle->config->sclk_out_pin_config->port_config.mode);
+                    handle->config->sclk_out_pin_config->port_config->mode);
 
     switch (handle->runtime->spi_master_mode)
     {
@@ -1122,31 +1093,31 @@ static void SPI_MASTER_lPortModeSet(const SPI_MASTER_t* handle)
         case XMC_SPI_CH_MODE_STANDARD_HALFDUPLEX:
             XMC_GPIO_SetMode(handle->config->mosi_0_pin->port,
                             handle->config->mosi_0_pin->pin,
-                            handle->config->mosi_0_pin_config->port_config.mode);
+                            handle->config->mosi_0_pin_config->port_config->mode);
             break;
 
         case XMC_SPI_CH_MODE_DUAL:
             XMC_GPIO_SetMode(handle->config->mosi_0_pin->port,
                             handle->config->mosi_0_pin->pin,
-                            handle->config->mosi_0_pin_config->port_config.mode);
+                            handle->config->mosi_0_pin_config->port_config->mode);
             XMC_GPIO_SetMode(handle->config->mosi_1_pin->port,
                             handle->config->mosi_1_pin->pin,
-                            handle->config->mosi_1_pin_config->port_config.mode);
+                            handle->config->mosi_1_pin_config->port_config->mode);
             break;
 
         case XMC_SPI_CH_MODE_QUAD:
             XMC_GPIO_SetMode(handle->config->mosi_0_pin->port,
                             handle->config->mosi_0_pin->pin,
-                            handle->config->mosi_0_pin_config->port_config.mode);
+                            handle->config->mosi_0_pin_config->port_config->mode);
             XMC_GPIO_SetMode(handle->config->mosi_1_pin->port,
                             handle->config->mosi_1_pin->pin,
-                            handle->config->mosi_1_pin_config->port_config.mode);
+                            handle->config->mosi_1_pin_config->port_config->mode);
             XMC_GPIO_SetMode(handle->config->mosi_2_pin->port,
                             handle->config->mosi_2_pin->pin,
-                            handle->config->mosi_2_pin_config->port_config.mode);
+                            handle->config->mosi_2_pin_config->port_config->mode);
             XMC_GPIO_SetMode(handle->config->mosi_3_pin->port,
                             handle->config->mosi_3_pin->pin,
-                            handle->config->mosi_3_pin_config->port_config.mode);
+                            handle->config->mosi_3_pin_config->port_config->mode);
           break;
 
         default:

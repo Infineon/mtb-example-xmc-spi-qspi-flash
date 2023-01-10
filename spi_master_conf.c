@@ -4,13 +4,13 @@
  * Description: This is the source code for the XMC MCU: SPI QSPI Flash
  *              example for ModusToolbox. This file contains all the
  *              configurations required to interface with the on-board
- *              external memory chip on XMC4700 Relax Kit V1.
+ *              external memory chip on all supported Kits.
  *
  * Related Document: See README.md
  *
  ******************************************************************************
  *
- * Copyright (c) 2015-2021, Infineon Technologies AG
+ * Copyright (c) 2015-2022, Infineon Technologies AG
  * All rights reserved.
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
@@ -43,144 +43,105 @@
 * Include header files
 *******************************************************************************/
 #include "spi_master.h"
+#include "cycfg_peripherals.h"
+#include "cycfg_pins.h"
 
 /*******************************************************************************
 * Function Prototypes
 *******************************************************************************/
 extern void SPI_MASTER_lTransmitHandler(const SPI_MASTER_t * const handle);
 extern void SPI_MASTER_lReceiveHandler(const SPI_MASTER_t * const handle);
-static SPI_MASTER_STATUS_t SPI_MASTER_0_lInit(void);
 
 /*******************************************************************************
 * Data Structures
 *******************************************************************************/
 /* QSPI Data IO0 pin assignment */
-const SPI_MASTER_GPIO_t SPI_MASTER_0_MOSI0 = 
+const SPI_MASTER_GPIO_t SPI_MASTER_0_MOSI0 =
 {
-    .port = (XMC_GPIO_PORT_t *)PORT4_BASE,
-    .pin  = (uint8_t)7
-};         
+    .port = CYBSP_QSPI_D0_PORT,
+    .pin  = CYBSP_QSPI_D0_PIN
+};
 
 /* Configuration for QSPI Data IO0 pin */
-SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_MOSI0_Config = 
-{ 
-    .port_config =
-    {
-        .mode = XMC_GPIO_MODE_OUTPUT_PUSH_PULL_ALT1,
-        .output_level = XMC_GPIO_OUTPUT_LEVEL_HIGH,
-        .output_strength = XMC_GPIO_OUTPUT_STRENGTH_STRONG_MEDIUM_EDGE
-    },
+SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_MOSI0_Config =
+{
+    .port_config =&CYBSP_QSPI_D0_config,
     .hw_control = XMC_GPIO_HWCTRL_PERIPHERAL1
 };
 
 /* QSPI Data IO1 pin assignment */
-const SPI_MASTER_GPIO_t SPI_MASTER_0_MOSI1 = 
+const SPI_MASTER_GPIO_t SPI_MASTER_0_MOSI1 =
 {
-    .port = (XMC_GPIO_PORT_t *)PORT4_BASE,
-    .pin  = (uint8_t)6
-};     
+    .port = CYBSP_QSPI_D1_PORT,
+    .pin  = CYBSP_QSPI_D1_PIN
+};
 
 /* Configuration for QSPI Data IO1 pin */
-SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_MOSI1_Config = 
-{ 
-    .port_config =
-    {
-        .mode = XMC_GPIO_MODE_OUTPUT_PUSH_PULL,
-        .output_level = XMC_GPIO_OUTPUT_LEVEL_HIGH,
-        .output_strength = XMC_GPIO_OUTPUT_STRENGTH_STRONG_MEDIUM_EDGE
-    },
+SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_MOSI1_Config =
+{
+    .port_config =&CYBSP_QSPI_D1_config,
     .hw_control = XMC_GPIO_HWCTRL_PERIPHERAL1
 };
 
 /* QSPI Data IO2 pin assignment */
-const SPI_MASTER_GPIO_t SPI_MASTER_0_MOSI2 = 
+const SPI_MASTER_GPIO_t SPI_MASTER_0_MOSI2 =
 {
-    .port = (XMC_GPIO_PORT_t *)PORT4_BASE,
-    .pin  = (uint8_t)5
+    .port = CYBSP_QSPI_D2_PORT,
+    .pin  = CYBSP_QSPI_D2_PIN
 };
 
 /* Configuration for QSPI Data IO2 pin */
-SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_MOSI2_Config = 
-{ 
-    .port_config =
-    {
-        .mode = XMC_GPIO_MODE_OUTPUT_PUSH_PULL,
-        .output_level = XMC_GPIO_OUTPUT_LEVEL_HIGH,
-        .output_strength = XMC_GPIO_OUTPUT_STRENGTH_STRONG_MEDIUM_EDGE
-    },
+SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_MOSI2_Config =
+{
+    .port_config =&CYBSP_QSPI_D2_config,
     .hw_control = XMC_GPIO_HWCTRL_PERIPHERAL1
 };
 
 /* QSPI Data IO3 pin assignment */
-const SPI_MASTER_GPIO_t SPI_MASTER_0_MOSI3 = 
+const SPI_MASTER_GPIO_t SPI_MASTER_0_MOSI3 =
 {
-    .port = (XMC_GPIO_PORT_t *)PORT4_BASE,
-    .pin  = (uint8_t)4
+    .port = CYBSP_QSPI_D3_PORT,
+    .pin  = CYBSP_QSPI_D3_PIN
 };
 
 /* Configuration for QSPI Data IO3 pin */
-SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_MOSI3_Config = 
-{ 
-    .port_config =
-    {
-        .mode = XMC_GPIO_MODE_OUTPUT_PUSH_PULL,
-        .output_level = XMC_GPIO_OUTPUT_LEVEL_HIGH,
-        .output_strength = XMC_GPIO_OUTPUT_STRENGTH_STRONG_MEDIUM_EDGE
-    },
+SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_MOSI3_Config =
+{
+    .port_config =&CYBSP_QSPI_D3_config,
     .hw_control = XMC_GPIO_HWCTRL_PERIPHERAL1
 };
 
 /* QSPI SCLK pin assignment */
-const SPI_MASTER_GPIO_t SPI_MASTER_0_SCLKOUT = 
+const SPI_MASTER_GPIO_t SPI_MASTER_0_SCLKOUT =
 {
-    .port = (XMC_GPIO_PORT_t *)PORT4_BASE,
-    .pin  = (uint8_t)2
-};     
+    .port = CYBSP_QSPI_SCK_PORT,
+    .pin  = CYBSP_QSPI_SCK_PIN
+};
 
 /* Configuration for QSPI SCLK pin */
-const SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_SCLKOUT_Config = 
-{ 
-    .port_config =
-    {
-        .mode = XMC_GPIO_MODE_OUTPUT_PUSH_PULL_ALT4,
-        .output_level = XMC_GPIO_OUTPUT_LEVEL_HIGH,
-        .output_strength = XMC_GPIO_OUTPUT_STRENGTH_STRONG_MEDIUM_EDGE
-    }
+const SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_SCLKOUT_Config =
+{
+    .port_config = &CYBSP_QSPI_SCK_config
 };
 
 /* QSPI Slave Select pin assignment */
 const SPI_MASTER_GPIO_t SPI_MASTER_0_SS_0 =
 {
-    .port = (XMC_GPIO_PORT_t *)PORT4_BASE,
-    .pin  = (uint8_t)3
+    .port = CYBSP_QSPI_SS_PORT,
+    .pin  = CYBSP_QSPI_SS_PIN
 };
 
 /* Configuration for QSPI Slave Select pin */
 const SPI_MASTER_GPIO_CONFIG_t SPI_MASTER_0_SS_0_Config =
 {
-    .port_config =
-    {
-        .mode = XMC_GPIO_MODE_OUTPUT_PUSH_PULL_ALT1,
-        .output_level = XMC_GPIO_OUTPUT_LEVEL_HIGH,
-        .output_strength = XMC_GPIO_OUTPUT_STRENGTH_STRONG_MEDIUM_EDGE
-    },
-    .slave_select_ch = XMC_SPI_CH_SLAVE_SELECT_2
-};
-
-/* SPI Master channel configuration */
-XMC_SPI_CH_CONFIG_t SPI_MASTER_0_Channel_Config =
-{
-    .baudrate = BAUD_RATE,
-    .bus_mode = (XMC_SPI_CH_BUS_MODE_t)XMC_SPI_CH_BUS_MODE_MASTER,
-    .selo_inversion = XMC_SPI_CH_SLAVE_SEL_INV_TO_MSLS,
-    .parity_mode = XMC_USIC_CH_PARITY_MODE_NONE
+    .port_config = &CYBSP_QSPI_SS_config,
+    .slave_select_ch = SPI_CHANNEL_SS_CHANNEL
 };
 
 /* SPI Master driver configuration */
-const SPI_MASTER_CONFIG_t SPI_MASTER_0_Config  = 
+const SPI_MASTER_CONFIG_t SPI_MASTER_0_Config  =
 {
-    .channel_config          = &SPI_MASTER_0_Channel_Config,
-    .fptr_spi_master_config  = SPI_MASTER_0_lInit,
+    .channel_config          = &SPI_CHANNEL_config,
     /* FIFO configuration */
     .tx_fifo_size            = (XMC_USIC_CH_FIFO_SIZE_t)XMC_USIC_CH_FIFO_SIZE_32WORDS,
     .rx_fifo_size            = (XMC_USIC_CH_FIFO_SIZE_t)XMC_USIC_CH_FIFO_SIZE_32WORDS,
@@ -224,6 +185,21 @@ SPI_MASTER_RUNTIME_t SPI_MASTER_0_runtime =
     .spi_master_mode = XMC_SPI_CH_MODE_QUAD, /* spi master transmission mode */
     .word_length     = 8U,
 
+#if (UC_SERIES == XMC44) || (UC_SERIES == XMC45)
+#ifdef USIC0_C0_DX0_P1_4
+    .dx0_input = (SPI_MASTER_INPUT_t)USIC0_C0_DX0_P1_4,
+#else
+    .dx0_input = SPI_MASTER_INPUT_INVALID,
+#endif
+
+#ifdef USIC0_C0_DX0_P1_4
+    .dx0_input_half_duplex = (SPI_MASTER_INPUT_t)USIC0_C0_DX0_P1_4,
+#else
+    .dx0_input_half_duplex = SPI_MASTER_INPUT_INVALID,
+#endif
+#endif
+
+#if (UC_SERIES == XMC47) || (UC_SERIES == XMC48)
 #ifdef USIC2_C1_DX0_P4_6
     .dx0_input = (SPI_MASTER_INPUT_t)USIC2_C1_DX0_P4_6,
 #else
@@ -235,6 +211,7 @@ SPI_MASTER_RUNTIME_t SPI_MASTER_0_runtime =
 #else
     .dx0_input_half_duplex = SPI_MASTER_INPUT_INVALID,
 #endif
+#endif
 
     .tx_data_dummy = false,
     .rx_data_dummy = true,
@@ -245,114 +222,19 @@ SPI_MASTER_RUNTIME_t SPI_MASTER_0_runtime =
 /* SPI Master initialization structure */
 SPI_MASTER_t SPI_MASTER_0 =
 {
-    .channel = XMC_SPI2_CH1, /* USIC channel */
+    .channel = SPI_CHANNEL_HW, /* USIC channel */
     .config  = &SPI_MASTER_0_Config, /* spi master configuration structure pointer */
     .runtime = &SPI_MASTER_0_runtime,
 };
 
-/* Configure the port registers and data input registers of SPI channel */
-static SPI_MASTER_STATUS_t SPI_MASTER_0_lInit(void)
-{
-    SPI_MASTER_STATUS_t status;
-    status = SPI_MASTER_STATUS_SUCCESS;
-    /* LLD initialization */
-    XMC_SPI_CH_Init(XMC_SPI2_CH1, &SPI_MASTER_0_Channel_Config);
-
-    XMC_SPI_CH_SetBitOrderMsbFirst(XMC_SPI2_CH1);
-
-    XMC_SPI_CH_SetWordLength(XMC_SPI2_CH1, (uint8_t)8);
-
-    XMC_SPI_CH_SetFrameLength(XMC_SPI2_CH1, (uint8_t)64);
-
-    /* Configure the clock polarity and clock delay */
-    XMC_SPI_CH_ConfigureShiftClockOutput(XMC_SPI2_CH1,
-            XMC_SPI_CH_BRG_SHIFT_CLOCK_PASSIVE_LEVEL_1_DELAY_DISABLED,
-            XMC_SPI_CH_BRG_SHIFT_CLOCK_OUTPUT_SCLK);
-
-    /* Configure Leading/Trailing delay */
-    XMC_SPI_CH_SetSlaveSelectDelay(XMC_SPI2_CH1, 2U);
-
-    /* Configure the data input line in loop back mode */
-    XMC_SPI_CH_SetInputSource(XMC_SPI2_CH1, XMC_SPI_CH_INPUT_DIN0, (uint8_t)SPI_MASTER_INPUT_G);
-    XMC_SPI_CH_SetInputSource(XMC_SPI2_CH1, XMC_SPI_CH_INPUT_DIN1, (uint8_t)SPI_MASTER_INPUT_G);
-    XMC_SPI_CH_SetInputSource(XMC_SPI2_CH1, XMC_SPI_CH_INPUT_DIN2, (uint8_t)SPI_MASTER_INPUT_G);
-    XMC_SPI_CH_SetInputSource(XMC_SPI2_CH1, XMC_SPI_CH_INPUT_DIN3, (uint8_t)SPI_MASTER_INPUT_G);
-
-    /* Start the SPI_Channel */
-    XMC_SPI_CH_Start(XMC_SPI2_CH1);
-
-    /* Configure the pin properties */
-    XMC_GPIO_Init((XMC_GPIO_PORT_t *)PORT4_BASE, (uint8_t)7, &SPI_MASTER_0_MOSI0_Config.port_config);
-    XMC_GPIO_Init((XMC_GPIO_PORT_t *)PORT4_BASE, (uint8_t)6, &SPI_MASTER_0_MOSI1_Config.port_config);
-    XMC_GPIO_Init((XMC_GPIO_PORT_t *)PORT4_BASE, (uint8_t)5, &SPI_MASTER_0_MOSI2_Config.port_config);
-    XMC_GPIO_Init((XMC_GPIO_PORT_t *)PORT4_BASE, (uint8_t)4, &SPI_MASTER_0_MOSI3_Config.port_config);
-
-    /* Configure the Hardware control mode selected for the pin */
-    XMC_GPIO_SetHardwareControl((XMC_GPIO_PORT_t *)PORT4_BASE, (uint8_t)7, XMC_GPIO_HWCTRL_PERIPHERAL1);
-    XMC_GPIO_SetHardwareControl((XMC_GPIO_PORT_t *)PORT4_BASE, (uint8_t)6, XMC_GPIO_HWCTRL_PERIPHERAL1);
-    XMC_GPIO_SetHardwareControl((XMC_GPIO_PORT_t *)PORT4_BASE, (uint8_t)5, XMC_GPIO_HWCTRL_PERIPHERAL1);
-    XMC_GPIO_SetHardwareControl((XMC_GPIO_PORT_t *)PORT4_BASE, (uint8_t)4, XMC_GPIO_HWCTRL_PERIPHERAL1);
-
-    /* Initialize SPI SCLK out pin */
-    XMC_GPIO_Init((XMC_GPIO_PORT_t *)PORT4_BASE, (uint8_t)2, &SPI_MASTER_0_SCLKOUT_Config.port_config);
-
-    /* Configure the pin properties */
-    XMC_GPIO_Init((XMC_GPIO_PORT_t *)PORT4_BASE, (uint8_t)3, &SPI_MASTER_0_SS_0_Config.port_config);
-
-    XMC_SPI_CH_EnableSlaveSelect(XMC_SPI2_CH1, XMC_SPI_CH_SLAVE_SELECT_2);
-
-    XMC_USIC_CH_SetInterruptNodePointer(XMC_SPI2_CH1,
-            XMC_USIC_CH_INTERRUPT_NODE_POINTER_PROTOCOL,
-            (uint32_t)SPI_MASTER_SR_ID_2);
-
-    /* Configure transmit FIFO settings */
-    XMC_USIC_CH_TXFIFO_Configure(XMC_SPI2_CH1,
-            32U,
-            (XMC_USIC_CH_FIFO_SIZE_t)XMC_USIC_CH_FIFO_SIZE_32WORDS,
-            1U);
-
-    /* Configure the service interrupt nodes for standard transmit FIFO events */
-    XMC_USIC_CH_TXFIFO_SetInterruptNodePointer(XMC_SPI2_CH1,
-            XMC_USIC_CH_TXFIFO_INTERRUPT_NODE_POINTER_STANDARD,
-            (uint32_t)SPI_MASTER_SR_ID_1);
-
-    /* Configure receive FIFO settings */
-    XMC_USIC_CH_RXFIFO_Configure(XMC_SPI2_CH1,
-            0U,
-            (XMC_USIC_CH_FIFO_SIZE_t)XMC_USIC_CH_FIFO_SIZE_32WORDS,
-            0U);
-
-    XMC_USIC_CH_RXFIFO_SetInterruptNodePointer(XMC_SPI2_CH1,
-            XMC_USIC_CH_RXFIFO_INTERRUPT_NODE_POINTER_STANDARD,
-            (uint32_t)SPI_MASTER_SR_ID_0);
-
-    XMC_USIC_CH_RXFIFO_SetInterruptNodePointer(XMC_SPI2_CH1,
-            XMC_USIC_CH_RXFIFO_INTERRUPT_NODE_POINTER_ALTERNATE,
-            (uint32_t)SPI_MASTER_SR_ID_0);
-
-    /* Set priority of the Transmit interrupt */
-    NVIC_SetPriority((IRQn_Type)USIC2_1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 63U, 0U));
-
-    /* Enable Transmit interrupt */
-    NVIC_EnableIRQ((IRQn_Type)USIC2_1_IRQn);
-
-    /* Set priority of the Receive interrupt */
-    NVIC_SetPriority((IRQn_Type)USIC2_0_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 62U, 0U));
-
-    /* Enable Receive interrupt */
-    NVIC_EnableIRQ((IRQn_Type)USIC2_0_IRQn);
-
-    return status;
-}
-
 /* Transmit ISR */
-void SPI_MASTER_0_tx_handler()
+void SPI_CHANNEL_TRANSMIT_BUFFER_STANDARD_EVENT_HANDLER()
 {
     SPI_MASTER_lTransmitHandler(&SPI_MASTER_0);
 }
 
 /* Receive ISR */
-void SPI_MASTER_0_rx_handler()
+void SPI_CHANNEL_RECEIVE_BUFFER_STANDARD_EVENT_HANDLER()
 {
     SPI_MASTER_lReceiveHandler(&SPI_MASTER_0);
 }

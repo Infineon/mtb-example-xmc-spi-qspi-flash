@@ -10,7 +10,7 @@
  *
  ******************************************************************************
  *
- * Copyright (c) 2015-2021, Infineon Technologies AG
+ * Copyright (c) 2015-2022, Infineon Technologies AG
  * All rights reserved.
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
@@ -39,37 +39,45 @@
  *
  *****************************************************************************/
 
+#include <stdio.h>
 #include "cybsp.h"
 #include "cy_utils.h"
-#include "xmc_spi.h"
-#include "spi_master.h"
-#include "N25Q03.h"
-#include "retarget_io.h"
-#include <stdio.h>
+#include "cy_retarget_io.h"
+#include "memory_driver.h"
 
 /*******************************************************************************
  * Macros
  *******************************************************************************/
-#define DATA_LENGTH              256
-#define EXT_MEM_START_ADDR       0x00000000
-#define SUCCESS                  1
-#define FAILURE                  2
-#define WRITE_IN_PROGRESS_MSK    1
-#define WRITE_IN_ENABLED         1
-#define WRITE_EN_LATCH_MSK       2
-#define WRITE_ENABLED            2
+
+#define DATA_LENGTH             256
+#define EXT_MEM_START_ADDR      0x00000000
+
+#define SUCCESS                 1
+#define FAILURE                 2
+#define WRITE_IN_PROGRESS_MSK   1
+#define WRITE_IN_ENABLED        1
+#define WRITE_EN_LATCH_MSK      2
+#define WRITE_ENABLED           2
 
 /* Declarations for LED toggle timing */
-#define TICKS_PER_SECOND   1000
-#define TICKS_WAIT_MS      500
+#define TICKS_PER_SECOND        1000
+#define TICKS_WAIT_MS           500
+
+/*******************************************************************************
+* Defines
+*******************************************************************************/
+
+/* Define macro to enable/disable printing of debug messages */
+#define ENABLE_XMC_DEBUG_PRINT              (0)
 
 /*******************************************************************************
  * Function Prototypes
  ********************************************************************************/
-static uint8_t erase_sector();
-static uint8_t program_page();
+static uint8_t erase_sector(void);
+static uint8_t program_page(void);
 void SysTick_Handler(void);
-static void handle_error();
+static void handle_error(void);
+void custom_delay(int32_t delay_cyc);
 
 /*******************************************************************************
  * Global Variables
@@ -84,11 +92,11 @@ uint8_t receive_buffer[DATA_LENGTH];
  * Function Name: main
  ********************************************************************************
  * Summary:
- *  This is the main function. It initializes the UART for debug information,
- *  a LED for status indication and then performs the following operations:
- *   1. Erasing the external memory
- *   2. Programming data into the external memory
- *   3. Reading data back from external memory
+ * This is the main function. It initializes the UART for debug information,
+ * a LED for status indication and then performs the following operations:
+ *  1. Erasing the external memory
+ *  2. Programming data into the external memory
+ *  3. Reading data back from external memory
  *
  * Parameters:
  *  none
@@ -97,6 +105,7 @@ uint8_t receive_buffer[DATA_LENGTH];
  *  int
  *
  *******************************************************************************/
+
 int main(void)
 {
     cy_rslt_t result;
@@ -114,41 +123,68 @@ int main(void)
     XMC_GPIO_SetOutputHigh(CYBSP_USER_LED_PORT, CYBSP_USER_LED_PIN);
 
     /* Initialize retarget-io to use the debug UART port */
-    retarget_io_init();
+    cy_retarget_io_init(CYBSP_DEBUG_UART_HW);
+
+    #if ENABLE_XMC_DEBUG_PRINT
+    printf("Initialization done\r\n");
+    #endif
 
     /* \x1b[2J\x1b[;H - ANSI ESC sequence for clear screen */
     printf("\x1b[2J\x1b[;H");
     printf("**************** XMC MCU: SPI QSPI Flash *****************\r\n");
 
-    /* Initialize the SPI Master */
-    SPI_MASTER_Init(&SPI_MASTER_0);
+    /* Start the SPI channel */
+    XMC_SPI_CH_Start(SPI_CHANNEL_HW);
+
+    /* Set priority of the Transmit interrupt */
+    NVIC_SetPriority((IRQn_Type) SPI_CHANNEL_TRANSMIT_BUFFER_STANDARD_EVENT_IRQN, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 63U, 0U));
+
+    /* Enable Transmit interrupt */
+    NVIC_EnableIRQ((IRQn_Type) SPI_CHANNEL_TRANSMIT_BUFFER_STANDARD_EVENT_IRQN);
+
+    /* Set priority of the Receive interrupt */
+    NVIC_SetPriority((IRQn_Type) SPI_CHANNEL_RECEIVE_BUFFER_STANDARD_EVENT_IRQN, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 62U, 0U));
+
+    /* Enable Receive interrupt */
+    NVIC_EnableIRQ((IRQn_Type) SPI_CHANNEL_RECEIVE_BUFFER_STANDARD_EVENT_IRQN);
+
+    #if ENABLE_XMC_DEBUG_PRINT
+    printf("Transmit and Receive interrupts enabled\r\n");
+    #endif
+
+    #if (UC_SERIES == XMC44)
+    memory_write_protection();
+    #endif
 
     /* Erase Sector */
     printf("\n\nErasing sector...\r\n");
     status = erase_sector();
 
-    if(status == FAILURE)
+    if (status == FAILURE)
     {
         printf("Error: Erase sector operation failed!\r\n");
         handle_error();
-    }else{
+    }
+    else
+    {
         printf("Sector erase successful!\r\n");
     }
 
     /* Read the data from SPI flash chip */
     printf("\n\nIssuing read command...\r\n");
-    N25Q03_ReadPage(EXT_MEM_START_ADDR, &receive_buffer[0]);
+    memory_read_page(EXT_MEM_START_ADDR, &receive_buffer[0]);
 
     printf("\r\nData read from external memory:\r\n");
 
     /* Check all the data received */
     for (tmp = 0; tmp < DATA_LENGTH; tmp++)
     {
-        if(tmp % 8 == 0){
+        if (tmp % 8 == 0){
             printf("\n\r");
         }
 
         printf("0x%X ", receive_buffer[tmp]);
+        custom_delay(20000);
     }
 
     printf("\r\n\nData to be programmed into external memory:\r\n");
@@ -159,29 +195,38 @@ int main(void)
         transmit_buffer[tmp] = tmp;
 
         /* Add new line after 8 bytes displayed */
-        if(tmp % 8 == 0){
+        if (tmp % 8 == 0){
             printf("\n\r");
         }
 
         /* Print the data being added to the buffer */
         printf("0x%X ", transmit_buffer[tmp]);
+        custom_delay(20000);
     }
 
     /* Program Page */
     printf("\r\n\nIssuing program command...\r\n");
     status = program_page();
 
-    if(status == FAILURE)
+    if (status == FAILURE)
     {
         printf("Error: Program page operation failed!\r\n");
         handle_error();
-    }else{
+    }
+    else
+    {
         printf("Programming successful!\r\n");
+    }
+
+    /* Clear receive_buffer */
+    for (tmp = 0; tmp < DATA_LENGTH; tmp++)
+    {
+        receive_buffer[tmp]=0;
     }
 
     /* Read the data from SPI flash chip */
     printf("\r\n\nIssuing read command again...\r\n");
-    N25Q03_ReadPage(EXT_MEM_START_ADDR, &receive_buffer[0]);
+    memory_read_page(EXT_MEM_START_ADDR, &receive_buffer[0]);
 
     printf("\r\nData read back from external memory:\r\n");
 
@@ -193,19 +238,25 @@ int main(void)
         }
 
         printf("0x%X ", receive_buffer[tmp]);
+        custom_delay(20000);
 
         /* Validate data */
         if (receive_buffer[tmp] != transmit_buffer[tmp])
         {
-            printf("\r\nError: Data mismatch found!\r\n");
-            handle_error();
+            for (;;)
+            {
+                printf("\r\nError: Data mismatch found!\r\n");
+                handle_error();
+            }
         }
     }
 
+    custom_delay(1000);
     printf("\r\n\nSuccessfully completed demo!\r\n");
 
     for (;;)
     {
+
     }
 }
 
@@ -213,8 +264,8 @@ int main(void)
  * Function Name: erase_sector
  ********************************************************************************
  * Summary:
- *  This function erases 256 bytes of data of the sector with start
- *  address 0x00000000
+ * This function erases 256 bytes of data of the sector with start
+ * address 0x00000000
  *
  * Parameters:
  *  None
@@ -225,27 +276,27 @@ int main(void)
  *          - returns 2 on failure
  *
  *******************************************************************************/
-static uint8_t erase_sector()
+static uint8_t erase_sector(void)
 {
     uint8_t tmp;
 
     /* Send write Enable data */
-    N25Q03_WriteEnable();
+    memory_write_enable();
 
     /* Read Status registers */
-    tmp = N25Q03_StatusRead();
+    tmp = memory_status_read();
 
     /* Check if write enable is set */
     if ((tmp & WRITE_EN_LATCH_MSK) != WRITE_ENABLED)
         return FAILURE;
 
     /* Send sector erase command */
-    N25Q03_SectorErase(EXT_MEM_START_ADDR);
+    memory_sector_erase(EXT_MEM_START_ADDR);
 
     /* Wait till sector erase is completed */
     do
     {
-        tmp = N25Q03_StatusRead();
+        tmp = memory_status_read();
     } while (tmp & WRITE_IN_PROGRESS_MSK);   /* wait until busy = 0 */
 
     return SUCCESS;
@@ -255,8 +306,8 @@ static uint8_t erase_sector()
  * Function Name: program_page
  ********************************************************************************
  * Summary:
- *  This function programs 256 bytes of data to the sector with start
- *  address 0x00000000
+ * This function programs 256 bytes of data to the sector with start
+ * address 0x00000000
  *
  * Parameters:
  *  None
@@ -267,27 +318,27 @@ static uint8_t erase_sector()
  *          - returns 2 on failure
  *
  *******************************************************************************/
-static uint8_t program_page()
+static uint8_t program_page(void)
 {
     uint32_t tmp;
 
     /* Send write enable command for programming page */
-    N25Q03_WriteEnable();
+    memory_write_enable();
 
     /* Read the status register value of SPI Flash chip */
-    tmp = N25Q03_StatusRead();
+    tmp = memory_status_read();
 
     /* Check if write enable is set */
     if ((tmp & WRITE_EN_LATCH_MSK) != WRITE_ENABLED)
         return FAILURE;
 
     /* Program page */
-    N25Q03_ProgramPage(EXT_MEM_START_ADDR, &transmit_buffer[0]);
+    memory_program_page(EXT_MEM_START_ADDR, &transmit_buffer[0]);
 
     /* Wait till program page is finished */
     do
     {
-        tmp = N25Q03_StatusRead();
+        tmp = memory_status_read();
     } while ((tmp & WRITE_IN_PROGRESS_MSK));    /* wait until busy = 0 */
 
     return SUCCESS;
@@ -324,8 +375,8 @@ void SysTick_Handler(void)
  * Function Name: handle_error
  ********************************************************************************
  * Summary:
- *  This function sets the LED to LOW and puts the application in a forever
- *  loop whenever an error is encountered
+ * This function sets the LED to LOW and puts the application in a forever
+ * loop whenever an error is encountered
  *
  * Parameters:
  *  None
@@ -334,7 +385,7 @@ void SysTick_Handler(void)
  *  void
  *
  *******************************************************************************/
-static void handle_error()
+static void handle_error(void)
 {
     /* Toggle user LED using system timer to indicate failure */
     SysTick_Config(SystemCoreClock / TICKS_PER_SECOND);
@@ -342,5 +393,25 @@ static void handle_error()
     /* Forever loop */
     while(1);
 }
+
+/*******************************************************************************
+ * Function Name: custom_delay
+ ********************************************************************************
+ * Summary:
+ * This function sets custom delay for easier printing data on Serial Terminal
+ *
+ * Parameters:
+ *  delay_cyc - Number of NOP commands
+ *
+ * Return:
+ *  void
+ *
+ *******************************************************************************/
+void custom_delay(int32_t delay_cyc)
+{
+    while (delay_cyc--)
+        asm("NOP");
+}
+
 
 /* [] END OF FILE */
