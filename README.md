@@ -10,7 +10,7 @@ This example demonstrates how the communication between the SPI master and the o
 
 ## Requirements
 
-- [ModusToolbox&trade; software](https://www.infineon.com/cms/en/design-support/tools/sdk/modustoolbox-software/) v3.0
+- [ModusToolbox&trade; software](https://www.infineon.com/cms/en/design-support/tools/sdk/modustoolbox-software/) v3.0 or later (tested with v3.3)
 - [SEGGER J-Link software](https://www.segger.com/downloads/jlink/#J-LinkSoftwareAndDocumentationPack)
 - Programming language: C
 - Associated parts: [XMC™ 4000 series MCU](https://www.infineon.com/cms/en/product/microcontroller/32-bit-industrial-microcontroller-based-on-arm-cortex-m/32-bit-xmc4000-industrial-microcontroller-arm-cortex-m4/) parts
@@ -284,11 +284,12 @@ Document title: *CE232911* - *XMC&trade; MCU: SPI QSPI flash*
  1.1.0   | Added support for new kits
  2.0.0   | Added support for SPI personality; Updated to support ModusToolbox software v3.0; CE will not be backwards compatible with previous versions of ModusToolbox™ software |
 | 2.0.1   | Updated README        |
+| 2.0.2   | Fixed build warnings  |
 ------
 
 All other trademarks or registered trademarks referenced herein are the property of their respective owners.
 
-© 2022 Infineon Technologies AG
+© 2022-2024 Infineon Technologies AG
 
 All Rights Reserved.
 

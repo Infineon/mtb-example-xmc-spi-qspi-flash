@@ -138,8 +138,7 @@ uint16_t memory_status_read(void)
     XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT16_FRAME);
 
     /* Enable slave select */
-    SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0,
-            SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
+    XMC_SPI_CH_EnableSlaveSelect(SPI_MASTER_0.channel, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
 
     /* Clear the flags */
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_ALTERNATIVE_RECEIVE_INDICATION);
@@ -203,7 +202,7 @@ void memory_sector_erase(uint32_t address)
     XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT32_FRAME);
 
     /* Enable slave select */
-    SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
+    XMC_SPI_CH_EnableSlaveSelect(SPI_MASTER_0.channel, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
 
     /* Clear the flags */
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_ALTERNATIVE_RECEIVE_INDICATION);
@@ -309,7 +308,7 @@ void memory_write_enable(void)
     XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT8_FRAME);
 
     /* Enable slave select */
-    SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
+    XMC_SPI_CH_EnableSlaveSelect(SPI_MASTER_0.channel, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
 
     /* Clear the flags */
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_ALTERNATIVE_RECEIVE_INDICATION);
@@ -361,7 +360,7 @@ void memory_write_protection(void)
     XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT8_FRAME);
 
     /* Enable slave select */
-    SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
+    XMC_SPI_CH_EnableSlaveSelect(SPI_MASTER_0.channel, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
 
     /* Clear the flags */
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_ALTERNATIVE_RECEIVE_INDICATION);
@@ -415,7 +414,7 @@ void memory_quad_read_page(uint32_t address, uint8_t *p_spi_receive_data)
     XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT64_FRAME);
 
     /* Enable slave select */
-    SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
+    XMC_SPI_CH_EnableSlaveSelect(SPI_MASTER_0.channel, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
 
     /* Clear the flags */
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_ALTERNATIVE_RECEIVE_INDICATION);
@@ -554,7 +553,7 @@ void memory_quad_write_page(uint32_t address, uint8_t *p_spi_send_data)
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION);
 
     /* Enable the Slave Select Line */
-    SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
+    XMC_SPI_CH_EnableSlaveSelect(SPI_MASTER_0.channel, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
 
     /* Program Quad page command */
     data = MEMORY_CM_PROG_QPAGE;
@@ -679,7 +678,7 @@ void memory_read_page(uint32_t address, uint8_t *p_spi_receive_data)
     XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT64_FRAME);
 
     /* Enable the Slave Select Line */
-    SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
+    XMC_SPI_CH_EnableSlaveSelect(SPI_MASTER_0.channel, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
 
     /* Clear the flags */
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_ALTERNATIVE_RECEIVE_INDICATION);
@@ -794,7 +793,7 @@ void memory_program_page( uint32_t address, uint8_t *p_spi_send_data)
     XMC_USIC_CH_SetFrameLength(SPI_CHANNEL_HW, BIT64_FRAME);
 
     /* Enable the Slave Select Line */
-    SPI_MASTER_EnableSlaveSelectSignal(&SPI_MASTER_0, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
+    XMC_SPI_CH_EnableSlaveSelect(SPI_MASTER_0.channel, SPI_MASTER_0.config->slave_select_pin_config[0]->slave_select_ch);
 
     /* Clear the flags */
     SPI_MASTER_ClearFlag(&SPI_MASTER_0, XMC_SPI_CH_STATUS_FLAG_ALTERNATIVE_RECEIVE_INDICATION);

@@ -132,7 +132,7 @@ CXXFLAGS=
 ASFLAGS=
 
 # Additional / custom linker flags.
-LDFLAGS=--specs=nosys.specs
+LDFLAGS=
 
 # Additional / custom libraries to link in to the application.
 LDLIBS=
